@@ -1,0 +1,147 @@
+const DbService = require("db-mixin");
+const Membership = require("membership-mixin");
+const ConfigLoader = require("config-mixin");
+const { MoleculerClientError } = require("moleculer").Errors;
+
+
+/**
+ * this is the git.commits service for tracking commits
+ */
+
+module.exports = {
+    // name of service
+    name: "git.commits",
+    // version of service
+    version: 1,
+
+    /**
+     * Service Mixins
+     * 
+     * @type {Array}
+     * @property {DbService} DbService - Database mixin
+     * @property {ConfigLoader} ConfigLoader - Config loader mixin
+     */
+    mixins: [
+        DbService({
+            permissions: 'git.commits'
+        }),
+        ConfigLoader([
+            'git.**'
+        ]),
+    ],
+
+    /**
+     * Service dependencies
+     */
+    dependencies: [],
+
+    /**
+     * Service settings
+     * 
+     * @type {Object}
+     */
+    settings: {
+        rest: true,
+
+        fields: {
+            // commit repository
+            repository: {
+                type: "string",
+                index: true,
+                required: true,
+            },
+
+            // authed user id
+            user: {
+                type: "string",
+                index: true,
+                required: true,
+            },
+
+            // commit hash
+            hash: {
+                type: "string",
+                index: true,
+                required: true,
+            },
+
+            // git commit author
+            author:{
+                type:"object",
+                required: true,
+                props: {
+                    name: { type: "string", required: true },
+                    email: { type: "string", required: true },
+                }
+            },
+
+            // git message
+            message: {
+                type: "string",
+                required: true,
+            },
+
+
+            // inject dbservice fields
+            ...DbService.FIELDS,// inject dbservice fields
+        },
+        defaultPopulates: [],
+
+        scopes: {
+            ...DbService.SCOPE,
+        },
+
+        defaultScopes: [
+            ...DbService.DSCOPE,
+        ],
+
+        // default init config settings
+        config: {
+            
+        }
+    },
+
+    /**
+     * service actions
+     */
+    actions: {
+        
+    },
+
+    /**
+     * service events
+     */
+    events: {
+
+    },
+
+    /**
+     * service methods
+     */
+    methods: {
+        
+    },
+
+
+    /**
+     * service created lifecycle event handler
+     */
+    created() {
+
+    },
+
+    /**
+     * service started lifecycle event handler
+     */
+    async started() {
+
+    },
+
+    /**
+     * service stopped lifecycle event handler
+     */
+    async stopped() {
+
+    }
+};
+
