@@ -491,6 +491,59 @@ module.exports = {
             }
         },
 
+        /**
+         * track branch in repository
+         * 
+         * @actions
+         * @param {String} name - name of repository
+         * @param {String} namespace - namespace of repository
+         * @param {String} branch - branch name
+         * 
+         * @returns {Object} - repository object
+         */
+        trackBranch: {
+            params: {
+                name: {
+                    type: "string",
+                    min: 3,
+                    max: 64,
+                    pattern: /^[a-zA-Z0-9-_]+$/,
+                    required: true,
+                },
+                namespace: {
+                    type: "string",
+                    min: 3,
+                    max: 64,
+                    pattern: /^[a-zA-Z0-9-_]+$/,
+                    required: true,
+                },
+                branch: {
+                    type: "string",
+                    required: true,
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // lookup repository
+                const repository = await this.lookup(ctx, params.name, params.namespace);
+
+                // check if repository has branch
+                if (repository.branches.includes(params.branch)) {
+                    //throw new MoleculerClientError("branch already tracked", 400);
+                    return repository;
+                }
+
+                // append commit to repository
+                await this.updateEntity(ctx, {
+                    id: repository.id,
+                    branches: [...repository.branches, params.branch]
+                });
+
+                // return repository
+                return this.lookup(ctx, params.name, params.namespace);
+            }
+        },
         // clean db
         clean: {
             async handler(ctx) {

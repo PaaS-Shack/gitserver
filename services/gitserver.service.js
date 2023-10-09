@@ -309,8 +309,15 @@ module.exports = {
             const backend = Backend(req.url);
 
             backend.on('service', (service) => {
-                this.handleService(ctx, repo, service).then(() => {
+                this.handleService(ctx, repo, service).then(async () => {
                     if (service.action === 'push') {
+                        await ctx.call('v1.git.repositories.trackBranch', {
+                            name: repo.name,
+                            namespace: repo.namespace,
+                            branch: service.fields.branch
+                        }).catch((err) => {
+                            this.logger.info(`Branch not tracked: ${service.fields.branch}`);
+                        });
                         return this.handleCommit(ctx, req, res, service, repositoryPath);
                     }
                 }).catch((err) => {
@@ -414,9 +421,6 @@ module.exports = {
         },
 
         /**
-         * 
-
-        /**
          * handle service request
          * 
          * @param {Context} ctx - context of request
@@ -464,9 +468,7 @@ module.exports = {
                     if (err) {
                         return reject(err);
                     }
-
                     this.logger.info(`Server closed`);
-
                     // resolve
                     resolve();
                 });
@@ -482,8 +484,6 @@ module.exports = {
          * @returns {Promise}
          */
         async createBareRepository(ctx, repository) {
-
-
             // check if repository is bare
             if (!repository.bare) {
                 // send error
@@ -512,6 +512,7 @@ module.exports = {
                 await fs.mkdir(repositoryPath, {
                     recursive: true
                 });
+
                 this.logger.info(`Repository path created: ${repositoryPath}`);
             } else {
 
