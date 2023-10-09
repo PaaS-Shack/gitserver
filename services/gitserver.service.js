@@ -14,7 +14,7 @@ const { spawn } = require("child_process");
 const { Context } = require("moleculer");
 const auth = require('basic-auth');
 const fs = require('fs').promises;
-const Git = require("nodegit");
+//const Git = require("nodegit");
 
 
 
@@ -125,6 +125,78 @@ module.exports = {
                 return this.handleRequest(ctx, req, res);
             }
         },
+
+        /**
+         * list local repositories
+         * 
+         * @actions
+         * 
+         * @returns {Promise} - list of repositories
+         */
+        listRepositories: {
+            async handler(ctx) {
+                // walk namespace folders for repositories names
+                const tmp = await fs.readdir(this.config['git.repositories.path']);
+                // filter folders
+                const namespaces = tmp.filter((name) => !name.startsWith('.'));
+                // get repositories
+
+                const repositories = await Promise.all(namespaces.map(async (namespace) => {
+                    // walk namespace folders for repositories names
+                    const tmp = await fs.readdir(`${this.config['git.repositories.path']}/${namespace}`);
+                    // filter folders
+                    const repositories = tmp.filter((name) => !name.startsWith('.'));
+                    // return repositories
+                    return repositories.map((name) => ({
+                        name,
+                        namespace
+                    }));
+                }));
+
+                return repositories;
+            }
+        },
+
+        /**
+         * connection count
+         * 
+         * @actions
+         * 
+         * @returns {Promise} - number of open connections
+         */
+        connectionCount: {
+            async handler(ctx) {
+                return this.openConnections.size;
+            }
+        },
+
+        /**
+         * create bare repository
+         * 
+         * @actions
+         * @param {String} id - repository id
+         * 
+         * @returns {Promise} - created repository
+         */
+        createBareRepository: {
+            params: {
+                id: {
+                    type: 'string'
+                }
+            },
+            async handler(ctx) {
+                // get repository
+                const repository = await ctx.call('v1.git.repositories.get', {
+                    id: ctx.params.id
+                });
+
+                // create bare repository
+                await this.createBareRepository(ctx, repository);
+
+                // return repository
+                return repository;
+            }
+        },
     },
 
     /**
@@ -184,6 +256,9 @@ module.exports = {
             return new Promise((resolve, reject) => {
                 // create http server
                 const server = require('http').createServer(async (req, res) => {
+                    // add open connection
+                    this.openConnections.set(req.socket.remoteAddress + ':' + req.socket.remotePort, req.socket);
+
                     this.actions.handleRequest({
                         req,
                         res
@@ -191,6 +266,9 @@ module.exports = {
                         this.logger.info(`Request: ${req.url} - ${res.statusCode}`);
                     }).catch((err) => {
                         this.logger.error(`Request: ${req.url} - ${err.message}`, err);
+                    }).finally(() => {
+                        // remove open connection
+                        this.openConnections.delete(req.socket.remoteAddress + ':' + req.socket.remotePort);
                     });
                 });
 
@@ -527,8 +605,24 @@ module.exports = {
 
                 // check if repository path is empty
                 if (repositoryPathIsEmpty.length > 0) {
-                    // send error
-                    throw new MoleculerClientError('Repository path is not empty', 500, 'REPOSITORY_PATH_NOT_EMPTY');
+                    // look git repository
+                    const repository = await Git.Repository.open(repositoryPath);
+                    // check if repository is bare
+                    if (!repository.isBare()) {
+                        // send error
+                        throw new MoleculerClientError('Repository is not bare', 500, 'REPOSITORY_NOT_BARE');
+                    }
+
+                    // check if repository is empty
+                    const repositoryIsEmpty = await repository.isEmpty();
+                    // check if repository is empty
+                    if (!repositoryIsEmpty) {
+                        // send error
+                        throw new MoleculerClientError('Repository is not empty', 500, 'REPOSITORY_NOT_EMPTY');
+                    }
+
+                    // return repository
+                    return repository;
                 }
             }
 
@@ -571,7 +665,7 @@ module.exports = {
      * service created lifecycle event handler
      */
     created() {
-
+        this.openConnections = new Map();
     },
 
     /**
