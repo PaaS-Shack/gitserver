@@ -14,7 +14,7 @@ const { spawn } = require("child_process");
 const { Context } = require("moleculer");
 const auth = require('basic-auth');
 const fs = require('fs').promises;
-//const Git = require("nodegit");
+const Git = require("nodegit");
 
 
 
