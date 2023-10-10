@@ -97,6 +97,17 @@ module.exports = {
                     return;
                 }
 
+
+
+                // check if user is cached
+                if (this.authCache.has(`${credentials.name}:${credentials.pass}`)) {
+                    // set user
+                    ctx.meta.user = this.authCache.get(`${credentials.name}:${credentials.pass}`);
+
+                    // handle request
+                    return this.handleRequest(ctx, req, res);
+                }
+
                 const { token } = await ctx.call('v1.accounts.login', {
                     username: credentials.name,
                     password: credentials.pass
@@ -117,6 +128,9 @@ module.exports = {
 
                     return;
                 }
+
+                // cache user
+                this.authCache.set(`${credentials.name}:${credentials.pass}`, user);
 
                 // set user
                 ctx.meta.user = user;
@@ -666,6 +680,7 @@ module.exports = {
      */
     created() {
         this.openConnections = new Map();
+        this.authCache = new Map();
     },
 
     /**
