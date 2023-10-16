@@ -14,7 +14,7 @@ const { spawn } = require("child_process");
 const { Context } = require("moleculer");
 const auth = require('basic-auth');
 const fs = require('fs').promises;
-const Git = require("nodegit");
+const Git = require("simple-git");
 
 
 
@@ -401,7 +401,7 @@ module.exports = {
             const backend = Backend(req.url);
 
             backend.on('service', (service) => {
-                this.handleService(ctx, repo, service).then(async () => {
+                this.handleService(ctx, req, res, service, repositoryPath).then(async () => {
                     if (service.action === 'push') {
                         await ctx.call('v1.git.repositories.trackBranch', {
                             name: repo.name,
@@ -410,10 +410,16 @@ module.exports = {
                         }).catch((err) => {
                             this.logger.info(`Branch not tracked: ${service.fields.branch}`);
                         });
-                        return this.handleCommit(ctx, req, res, service, repositoryPath);
+                        ctx.emit('git.repositories.push', {
+                            repo,
+                            branch: service.fields.branch
+                        });
+                        return //this.handleCommit(ctx, req, res, service, repositoryPath);
                     }
                 }).catch((err) => {
-                    backend.emit('error', err);
+                    console.log(err)
+                    res.statusCode = 500;
+                    res.end('Internal Server Error');
                 });
             });
 
@@ -429,51 +435,18 @@ module.exports = {
          * 
          * @returns {Promise}
          */
-        async handleCommit(ctx, repo, service) {
+        async handleCommit(ctx, req, res, service, repositoryPath) {
 
             const { head, last, refname, branch } = service.fields;
 
             this.logger.info(`Commit: ${head} - ${last} - ${refname} - ${branch}`);
-
-            // get repository path
-            const repositoryPath = await ctx.call('v1.git.repositories.getPath', {
-                name: repo.name,
-                namespace: repo.namespace
-            });
 
             // read commit message
             const commit = await this.getCommit(ctx, repositoryPath, head);
 
             // read commit message
             const commitMessage = await this.readCommitMessage(ctx, commit);
-            // get commit author
-            const author = commit.author();
 
-            // create new commit
-            const newCommit = {
-                repository: repo.id,
-                user: ctx.meta.user.id,
-                message: commitMessage,
-                author: {
-                    name: author.name(),
-                    email: author.email()
-                },
-                hash: commit.sha()
-            };
-
-            // create commit
-            const createdCommit = await ctx.call('v1.git.commits.create', newCommit);
-
-            this.logger.info(`Commit created: ${createdCommit.id}`);
-
-            // append commit
-            await ctx.call('v1.git.repositories.appendCommit', {
-                name: repo.name,
-                namespace: repo.namespace,
-                commit: createdCommit.id
-            });
-
-            return createdCommit;
         },
 
         /**
@@ -486,17 +459,22 @@ module.exports = {
          * @returns {Promise}
          */
         async getCommit(ctx, repositoryPath, head) {
-            // open repository
-            const repository = await Git.Repository.open(repositoryPath);
+            // read commit message with simple-git
 
-            // get commit
-            const commit = await repository.getCommit(head);
+            return {}
+
+            const git = Git(repositoryPath);
+
+            const commit = await git.log({
+                from: head,
+                to: head + '^'
+            });
 
             return commit;
         },
 
         /**
-         * read commit message with nodegit
+         * read commit message with simple-git
          * 
          * @param {Context} ctx - context of request
          * @param {Object} commit - commit object
@@ -505,9 +483,14 @@ module.exports = {
          */
         async readCommitMessage(ctx, commit) {
             // get commit message
-            const commitMessage = commit.message();
-
-            this.logger.info(`Commit message: ${commitMessage}`);
+            const commitMessage = await new Promise((resolve, reject) => {
+                commit.get((err, result) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve(result.latest.message);
+                });
+            });
 
             return commitMessage;
         },
@@ -524,6 +507,11 @@ module.exports = {
          * @returns {Promise}
          */
         handleService(ctx, req, res, service, repositoryPath) {
+
+            if (!service) {
+                return Promise.resolve();
+            }
+
             return new Promise((resolve, reject) => {
                 // set content type
                 res.setHeader('content-type', service.type);
@@ -620,20 +608,8 @@ module.exports = {
                 // check if repository path is empty
                 if (repositoryPathIsEmpty.length > 0) {
                     // look git repository
-                    const repository = await Git.Repository.open(repositoryPath);
-                    // check if repository is bare
-                    if (!repository.isBare()) {
-                        // send error
-                        throw new MoleculerClientError('Repository is not bare', 500, 'REPOSITORY_NOT_BARE');
-                    }
 
-                    // check if repository is empty
-                    const repositoryIsEmpty = await repository.isEmpty();
-                    // check if repository is empty
-                    if (!repositoryIsEmpty) {
-                        // send error
-                        throw new MoleculerClientError('Repository is not empty', 500, 'REPOSITORY_NOT_EMPTY');
-                    }
+
 
                     // return repository
                     return repository;
