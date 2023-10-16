@@ -33,6 +33,7 @@
     "membership-mixin": "git+https://github.com/FLYBYME/membership-mixin.git",
     "middlewares": "git+https://github.com/PaaS-Shack/middlewares.git",
     "moleculer": "^0.14.*",
+    "nats": "^2.17.0",
     "simple-git": "^3.20.0"
   },
   "engines": {

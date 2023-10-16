@@ -49,7 +49,7 @@
                                 }
                             }
                         ],
-                        "image": "ghcr.io/paas-shack/frontend-render:main",
+                        "image": "ghcr.io/paas-shack/gitserver:main",
                         "imagePullPolicy": "Always",
                         "name": "git",
                         "ports": [
@@ -71,7 +71,14 @@
                             }
                         },
                         "terminationMessagePath": "/dev/termination-log",
-                        "terminationMessagePolicy": "File"
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/tmp/repos",
+                                "name": "git-persistent-storage"
+                            }
+                        ]
+
                     }
                 ],
                 "dnsPolicy": "ClusterFirst",
@@ -89,6 +96,14 @@
                         "maxSkew": 1,
                         "topologyKey": "kubernetes.io/hostname",
                         "whenUnsatisfiable": "DoNotSchedule"
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "git-persistent-storage",
+                        "persistentVolumeClaim": {
+                            "claimName": "git-pv-claim"
+                        }
                     }
                 ]
             }
