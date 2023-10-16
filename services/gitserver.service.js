@@ -92,12 +92,59 @@ module.exports = {
                     res.setHeader('WWW-Authenticate', 'Basic realm="example"');
                     res.end('Access denied');
 
-                    this.logger.info(`Request: ${req.url} - Access denied`);
+                    this.logger.info(`Request: ${req.url} - Access denied - No credentials`);
 
                     return;
                 }
 
+                // check if is token password
+                if (credentials.name == 'token' && credentials.pass != '') {
+                    // check cache
+                    if (!this.authCache.has(`${credentials.pass}`)) {
+                        const token = await ctx.call('v1.tokens.check', {
+                            type: 'api-key',
+                            token: credentials.pass
+                        });
 
+                        if (!token) {
+                            // send error
+                            res.statusCode = 401;
+                            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                            res.end('Access denied');
+
+                            this.logger.info(`Request: ${req.url} - Access denied - Invalid token`);
+
+                            return;
+                        }
+
+                        const user = await ctx.call('v1.accounts.resolve', {
+                            id: token.owner
+                        });
+
+                        // check if user is valid
+                        if (!user) {
+                            // send error
+                            res.statusCode = 401;
+                            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                            res.end('Access denied');
+
+                            this.logger.info(`Request: ${req.url} - Access denied - Invalid user`);
+
+                            return;
+                        }
+
+                        // cache user
+                        this.authCache.set(`${credentials.pass}`, user);
+                    }
+
+
+                    // set user
+                    ctx.meta.user = this.authCache.get(`${credentials.pass}`);
+
+                    // handle request
+                    return this.handleRequest(ctx, req, res);
+
+                }
 
                 // check if user is cached
                 if (this.authCache.has(`${credentials.name}:${credentials.pass}`)) {
@@ -108,13 +155,25 @@ module.exports = {
                     return this.handleRequest(ctx, req, res);
                 }
 
-                const { token } = await ctx.call('v1.accounts.login', {
+                const result = await ctx.call('v1.accounts.login', {
                     username: credentials.name,
                     password: credentials.pass
+                }).catch((err) => {
+                    return null;
                 });
 
+                if (!result) {
+                    // send error
+                    res.statusCode = 401;
+                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+                    res.end('Access denied');
+
+                    this.logger.info(`Request: ${req.url} - Access denied - Invalid credentials`);
+                    return;
+                }
+
                 const user = await ctx.call('v1.accounts.resolveToken', {
-                    token
+                    token: result.token
                 });
 
                 // check if user is valid
@@ -124,7 +183,7 @@ module.exports = {
                     res.setHeader('WWW-Authenticate', 'Basic realm="example"');
                     res.end('Access denied');
 
-                    this.logger.info(`Request: ${req.url} - Access denied`);
+                    this.logger.info(`Request: ${req.url} - Access denied - Invalid user`);
 
                     return;
                 }
@@ -412,7 +471,7 @@ module.exports = {
                         });
                         ctx.emit('git.repositories.push', {
                             repo,
-                            branch: service.fields.branch
+                           ...service.fields
                         });
                         return //this.handleCommit(ctx, req, res, service, repositoryPath);
                     }
