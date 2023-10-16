@@ -65,22 +65,12 @@ module.exports = {
                 required: true,
             },
 
-            // git commit author
-            author:{
-                type:"object",
-                required: true,
-                props: {
-                    name: { type: "string", required: true },
-                    email: { type: "string", required: true },
-                }
-            },
-
-            // git message
-            message: {
+            // branch
+            branch: {
                 type: "string",
-                required: true,
+                index: true,
+                required: false,
             },
-
 
             // inject dbservice fields
             ...DbService.FIELDS,// inject dbservice fields
@@ -97,7 +87,7 @@ module.exports = {
 
         // default init config settings
         config: {
-            
+
         }
     },
 
@@ -105,21 +95,56 @@ module.exports = {
      * service actions
      */
     actions: {
-        
+
     },
 
     /**
      * service events
      */
     events: {
+        /**
+         * service event handler
+         */
+        async "git.repositories.removed"(ctx) {
+            const repository = ctx.params.data.id;
 
+            const entities = await this.findEntities(null, {
+                query: {
+                    repository
+                }
+            });
+
+            // delete entities
+            for (const entity of entities) {
+                await this.removeEntity(ctx, {
+                    id: entity.id
+                });
+            }
+
+            this.logger.info(`Deleted ${entities.length} commits for ${repository}`);
+        },
+        async "git.repositories.push"(ctx) {
+            const { repo, user, head, branch } = ctx.params;
+
+            // create commit
+            const commit = await this.createEntity(ctx, {
+                repository: repo.id,
+                user: user.id,
+                hash: head,
+                branch: branch,
+            });
+
+            // log
+            this.logger.info(`Created commit ${commit.id} for ${repo.name} by ${user.username}`);
+
+        },
     },
 
     /**
      * service methods
      */
     methods: {
-        
+
     },
 
 

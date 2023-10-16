@@ -471,9 +471,10 @@ module.exports = {
                         });
                         ctx.emit('git.repositories.push', {
                             repo,
-                           ...service.fields
+                            user: ctx.meta.user,
+                            ...service.fields
                         });
-                        return //this.handleCommit(ctx, req, res, service, repositoryPath);
+                        return;
                     }
                 }).catch((err) => {
                     console.log(err)
