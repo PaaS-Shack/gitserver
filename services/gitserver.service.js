@@ -88,12 +88,7 @@ module.exports = {
                 // check if credentials are valid
                 if (!credentials) {
                     // send error
-                    res.statusCode = 401;
-                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                    res.end('Access denied');
-
-                    this.logger.info(`Request: ${req.url} - Access denied - No credentials`);
-
+                    this.accessDenied(res, `Request: ${req.url} - Access denied - No credentials`);
                     return;
                 }
 
@@ -108,12 +103,7 @@ module.exports = {
 
                         if (!token) {
                             // send error
-                            res.statusCode = 401;
-                            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                            res.end('Access denied');
-
-                            this.logger.info(`Request: ${req.url} - Access denied - Invalid token`);
-
+                            this.accessDenied(res, `Request: ${req.url} - Access denied - Invalid token`);
                             return;
                         }
 
@@ -124,12 +114,7 @@ module.exports = {
                         // check if user is valid
                         if (!user) {
                             // send error
-                            res.statusCode = 401;
-                            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                            res.end('Access denied');
-
-                            this.logger.info(`Request: ${req.url} - Access denied - Invalid user`);
-
+                            this.accessDenied(res, `Request: ${req.url} - Access denied - Invalid user`);
                             return;
                         }
 
@@ -164,11 +149,7 @@ module.exports = {
 
                 if (!result) {
                     // send error
-                    res.statusCode = 401;
-                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                    res.end('Access denied');
-
-                    this.logger.info(`Request: ${req.url} - Access denied - Invalid credentials`);
+                    this.accessDenied(res, `Request: ${req.url} - Access denied - Invalid credentials`);
                     return;
                 }
 
@@ -179,12 +160,7 @@ module.exports = {
                 // check if user is valid
                 if (!user) {
                     // send error
-                    res.statusCode = 401;
-                    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-                    res.end('Access denied');
-
-                    this.logger.info(`Request: ${req.url} - Access denied - Invalid user`);
-
+                    this.accessDenied(res, `Request: ${req.url} - Access denied - Invalid user`);
                     return;
                 }
 
@@ -285,17 +261,20 @@ module.exports = {
         async "git.repositories.updated"(ctx) {
             // get payload
             const payload = ctx.params.data;
+
             // create bare repository
             await this.createBareRepository(ctx, payload);
         },
         async "git.repositories.removed"(ctx) {
             // get payload
             const payload = ctx.params.data;
+
             // get repository path
             const repositoryPath = await ctx.call('v1.git.repositories.getPath', {
                 name: payload.name,
                 namespace: payload.namespace
             });
+
             // remove repository path
             await fs.rmdir(repositoryPath, {
                 recursive: true
@@ -306,6 +285,7 @@ module.exports = {
             const namespacePath = repositoryPath.split('/').slice(0, -1).join('/');
             // check if namespace path is empty
             const namespacePathIsEmpty = await fs.readdir(namespacePath);
+
             if (namespacePathIsEmpty.length === 0) {
                 // remove namespace path
                 await fs.rmdir(namespacePath, {
@@ -333,8 +313,7 @@ module.exports = {
                     this.openConnections.set(req.socket.remoteAddress + ':' + req.socket.remotePort, req.socket);
 
                     this.actions.handleRequest({
-                        req,
-                        res
+                        req, res
                     }).then(() => {
                         this.logger.info(`Request: ${req.url} - ${res.statusCode}`);
                     }).catch((err) => {
@@ -708,6 +687,21 @@ module.exports = {
                     resolve();
                 });
             });
+        },
+
+
+        /**
+         * Access denied
+         * 
+         * @param {Object} res - http responce
+         * @param {String} message - error message 
+         */
+        accessDenied(res, message) {
+            res.statusCode = 401;
+            res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+            res.end('Access denied');
+
+            this.logger.info(message);
         },
     },
 
