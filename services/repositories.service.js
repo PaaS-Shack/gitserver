@@ -115,6 +115,20 @@ module.exports = {
                 }
             },
 
+            // repository access token for internal use
+            accessToken: {
+                type: "string",
+                required: false,
+                readonly: true,
+                onCreate: function ({ ctx }) {
+                    const repository = ctx.params;
+                    return ctx.call('v1.tokens.generate', {
+                        type: 'api-key',
+                        owner: repository.owner,
+                    }).then(token => token.token);
+                }
+            },
+
             access: {
                 type: "array",
 
