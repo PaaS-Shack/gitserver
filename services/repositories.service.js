@@ -577,16 +577,16 @@ module.exports = {
             params: {
                 id: {
                     type: "string",
-                    required: true,
+                    optional: false,
                 },
                 branch: {
                     type: "string",
-                    required: false,
+                    optional: true,
                     default: "main",
                 },
                 hash: {
                     type: "string",
-                    required: false
+                    optional: true
                 },
             },
             async handler(ctx) {
@@ -658,12 +658,9 @@ module.exports = {
          */
         async getById(ctx, id) {
             // get repository
-            const repository = await this.reolveEntities(null, {
+            return this.resolveEntities(null, {
                 id,
             });
-
-            // return repository
-            return repository;
         },
         /**
          * lookup repository by name and namespace
