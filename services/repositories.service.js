@@ -3,6 +3,8 @@ const Membership = require("membership-mixin");
 const ConfigLoader = require("config-mixin");
 const { MoleculerClientError } = require("moleculer").Errors;
 
+const URL = require('url');
+
 
 /**
  * this is the email account service
