@@ -558,6 +558,66 @@ module.exports = {
                 return this.lookup(ctx, params.name, params.namespace);
             }
         },
+
+        /**
+         * provide a clone path for repository 
+         * 
+         * @example 
+         * 
+         * github.com/namespace/name.git#branch
+         * 
+         * @actions
+         * @param {String} id - id of repository
+         * @param {String} branch - branch name
+         * @param {String} hash - commit hash
+         * 
+         * @returns {String} - repository clone path
+         */
+        clone: {
+            params: {
+                id: {
+                    type: "string",
+                    required: true,
+                },
+                branch: {
+                    type: "string",
+                    required: false,
+                    default: "main",
+                },
+                hash: {
+                    type: "string",
+                    required: false
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // get repository
+                const repository = await this.getById(ctx, params.id);
+
+                // check repository exists
+                if (!repository) {
+                    throw new MoleculerClientError("repository not found", 404);
+                }
+
+                const url = URL.parse(repository.url);
+                let cloneURL = `token:${repository.accessToken}@${url.host}/${repository.namespace}/${repository.name}.git`;
+
+                // check if branch is provided
+                if (params.branch) {
+                    cloneURL += `#${params.branch}`;
+                }
+
+                // check if hash is provided
+                if (params.hash) {
+                    cloneURL += `#${params.hash}`;
+                }
+
+                // return clone url
+                return cloneURL;
+            }
+        },
+
         // clean db
         clean: {
             async handler(ctx) {
@@ -588,6 +648,23 @@ module.exports = {
      * service methods
      */
     methods: {
+        /**
+         * get by id
+         * 
+         * @param {Context} ctx - context of request
+         * @param {String} id - id of repository
+         * 
+         * @returns {Promise<Object>} - repository object
+         */
+        async getById(ctx, id) {
+            // get repository
+            const repository = await this.reolveEntities(null, {
+                id,
+            });
+
+            // return repository
+            return repository;
+        },
         /**
          * lookup repository by name and namespace
          * 
