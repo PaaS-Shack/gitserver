@@ -602,17 +602,19 @@ module.exports = {
                     throw new MoleculerClientError("repository not found", 404);
                 }
 
+                // 
+
                 const url = URL.parse(repository.url);
-                let cloneURL = `git://token:${repository.accessToken}@${url.host}/${repository.namespace}/${repository.name}.git`;
+                let cloneURL = `git://token:${repository.accessToken}@${url.host}/${repository.namespace}/${repository.name}.git?`;
 
                 // check if branch is provided
                 if (params.branch) {
-                    cloneURL += `#${params.branch}`;
+                    cloneURL += `branch=${params.branch}`;
                 }
 
                 // check if hash is provided
                 if (params.hash) {
-                    cloneURL += `#${params.hash}`;
+                    cloneURL += `&hash=${params.hash}`;
                 }
 
                 // return clone url
