@@ -622,6 +622,44 @@ module.exports = {
             }
         },
 
+        /**
+         * generate auth token for repository
+         * 
+         * @actions
+         * @param {String} id - id of repository
+         * 
+         * @returns {String} - repository auth token
+         */
+        generateAuthToken: {
+            rest: {
+                method: "GET",
+                path: "/:id/token",
+            },
+            params: {
+                id: {
+                    type: "string",
+                    optional: false,
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // get repository
+                const repository = await this.getById(ctx, params.id);
+
+                // check repository exists
+                if (!repository) {
+                    throw new MoleculerClientError("repository not found", 404);
+                }
+
+                // generate auth token
+                const authToken = await this.generateAuthToken(ctx, repository);
+
+                // return auth token
+                return authToken;
+            }
+        },
+
         // clean db
         clean: {
             async handler(ctx) {
@@ -799,6 +837,25 @@ module.exports = {
 
             // return repository path
             return repositoryPath;
+        },
+
+        /**
+         * generate auth token for repository
+         * 
+         * @param {Context} ctx - context of request
+         * @param {Object} repository - repository object
+         * 
+         * @returns {Promise<String>} - repository auth token
+         */
+        async generateAuthToken(ctx, repository) {
+            // generate auth token
+            const authToken = await ctx.call('v1.tokens.generate', {
+                type: 'api-key',
+                owner: repository.owner,
+            });
+
+            // return auth token
+            return authToken;
         },
 
     },
