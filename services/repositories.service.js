@@ -603,13 +603,15 @@ module.exports = {
                 }
 
                 // 
-
                 const url = URL.parse(repository.url);
                 let cloneURL = `git://token:${repository.accessToken}@${url.host}/${repository.namespace}/${repository.name}.git`;
 
                 // check if branch is provided
-                if (params.branch && params.hash) {
-                    cloneURL += `#refs/heads/${params.branch}#${params.hash}`;
+                if (params.branch) {
+                    cloneURL += `#refs/heads/${params.branch}`;
+                    if(params.hash){
+                        cloneURL += `#${params.hash}`;
+                    }
                 }
 
                 // return clone url
