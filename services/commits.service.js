@@ -95,7 +95,38 @@ module.exports = {
      * service actions
      */
     actions: {
+        /**
+         * get commits for repository
+         * 
+         * @actions
+         * @param {String} repository - repository id
+         * 
+         * @returns {Object} commits
+         */
+        repository: {
+            rest: {
+                method: "GET",
+                path: "/list/:repository",
+            },
+            params: {
+                repository: {
+                    type: "string",
+                    required: true,
+                },
+            },
+            async handler(ctx) {
+                const { repository } = ctx.params;
 
+                // find commits
+                const commits = await this.findEntities(ctx, {
+                    query: {
+                        repository
+                    }
+                });
+
+                return commits;
+            }
+        },
     },
 
     /**
