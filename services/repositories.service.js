@@ -170,6 +170,28 @@ module.exports = {
                 },
             },
 
+            // push pull mirror array
+            mirrors: {
+                type: "array",
+                items: {
+                    type: "object",
+                    props: {
+                        url: {
+                            type: "string",
+                            required: true,
+                        },
+                        type: {
+                            type: "string",
+                            enum: ["push", "pull", "mirror"],
+                            required: true,
+                            default: "mirror",
+                        },
+                    },
+                    required: false,
+                },
+                required: false,
+                default: [],
+            },
 
             // repository tags
             tags: {
@@ -419,6 +441,94 @@ module.exports = {
 
                 // remove params
                 return this.removeUserAccess(ctx, repository, params.user);
+            }
+        },
+
+        /**
+         * add mirror to repository
+         * 
+         * @actions
+         * @param {String} id - id of repository
+         * @param {String} url - mirror url
+         * @param {String} type - mirror type
+         * 
+         * @returns {Object} - repository object
+         */
+        addMirror: {
+            params: {
+                id: {
+                    type: "string",
+                    required: true,
+                },
+                url: {
+                    type: "string",
+                    required: true,
+                },
+                type: {
+                    type: "string",
+                    enum: ["push", "pull", "mirror"],
+                    required: true,
+                    default: "mirror",
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // get repository
+                const repository = await this.getById(ctx, params.id);
+
+                // check repository exists
+                if (!repository) {
+                    throw new MoleculerClientError("repository not found", 404);
+                }
+
+                // add mirror to repository
+                return this.updateEntity(ctx, {
+                    id: repository.id,
+                    mirrors: [...repository.mirrors, {
+                        url: params.url,
+                        type: params.type
+                    }]
+                });
+            }
+        },
+
+        /**
+         * remove mirror from repository
+         * 
+         * @actions
+         * @param {String} id - id of repository
+         * @param {String} url - mirror url
+         * 
+         * @returns {Object} - repository object
+         */
+        removeMirror: {
+            params: {
+                id: {
+                    type: "string",
+                    required: true,
+                },
+                url: {
+                    type: "string",
+                    required: true,
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // get repository
+                const repository = await this.getById(ctx, params.id);
+
+                // check repository exists
+                if (!repository) {
+                    throw new MoleculerClientError("repository not found", 404);
+                }
+
+                // remove mirror from repository
+                return this.updateEntity(ctx, {
+                    id: repository.id,
+                    mirrors: repository.mirrors.filter(mirror => mirror.url !== params.url)
+                });
             }
         },
 
