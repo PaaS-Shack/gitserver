@@ -694,7 +694,7 @@ module.exports = {
                 return this.updateEntity(ctx, {
                     id: repository.id,
                     $set: {
-                        accessToken: authToken,
+                        accessToken: authToken.token
                     }
                 }, { raw: true });
             }
