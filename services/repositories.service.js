@@ -609,7 +609,7 @@ module.exports = {
                 // check if branch is provided
                 if (params.branch) {
                     cloneURL += `#refs/heads/${params.branch}`;
-                    if(params.hash){
+                    if (params.hash) {
                         cloneURL += `#${params.hash}`;
                     }
                 }
@@ -654,6 +654,49 @@ module.exports = {
 
                 // return auth token
                 return authToken;
+            }
+        },
+
+        /**
+         * generate access token for repository and update repository
+         * 
+         * @actions
+         * @param {String} id - id of repository
+         * 
+         * @returns {Object} - repository object
+         */
+        generateAccessToken: {
+            rest: {
+                method: "POST",
+                path: "/:id/token",
+            },
+            params: {
+                id: {
+                    type: "string",
+                    optional: false,
+                },
+            },
+            async handler(ctx) {
+                const params = Object.assign({}, ctx.params);
+
+                // get repository
+                const repository = await this.getById(ctx, params.id);
+
+                // check repository exists
+                if (!repository) {
+                    throw new MoleculerClientError("repository not found", 404);
+                }
+
+                // generate auth token
+                const authToken = await this.generateAuthToken(ctx, repository);
+
+                // update repository
+                return this.updateEntity(ctx, {
+                    id: repository.id,
+                    $set: {
+                        accessToken: authToken,
+                    }
+                }, { raw: true });
             }
         },
 
