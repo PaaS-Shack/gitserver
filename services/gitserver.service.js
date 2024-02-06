@@ -10,7 +10,7 @@ const { MoleculerClientError } = require("moleculer").Errors;
 
 const Backend = require('../lib/backend');
 const { PassThrough } = require("stream");
-const { spawn } = require("child_process");
+const { spawn,exec } = require("child_process");
 const { Context } = require("moleculer");
 const auth = require('basic-auth');
 const fs = require('fs').promises;
@@ -664,15 +664,52 @@ module.exports = {
 
                 if (fork) {
                     // fork repository
-                    const git = Git(repositoryPath);
-                    await git.addRemote('origin', fork.url);
-                    await git.fetch('origin');
+                    await this.forkRepository(ctx, repositoryPath, fork);
                 }
 
             }
 
             // return repository
             return repository;
+        },
+
+        /**
+         * fork repository
+         * 
+         * @param {Context} ctx - context of request
+         * @param {String} repositoryPath - repository path
+         * @param {Object} fork - fork object
+         * 
+         * @returns {Promise}
+         */
+        async forkRepository(ctx, repositoryPath, fork) {
+            // fork repository
+            await new Promise((resolve, reject) => {
+                // create process
+                const ps = spawn('git', ['remote', 'add', 'origin', fork.url], {
+                    cwd: repositoryPath
+                });
+
+                // handle close
+                ps.on('close', (code) => {
+                    // resolve
+                    resolve();
+                });
+            });
+
+            // fetch repository
+            await new Promise((resolve, reject) => {
+                // create process
+                const ps = spawn('git', ['fetch', 'origin'], {
+                    cwd: repositoryPath
+                });
+
+                // handle close
+                ps.on('close', (code) => {
+                    // resolve
+                    resolve();
+                });
+            });
         },
 
         /**
