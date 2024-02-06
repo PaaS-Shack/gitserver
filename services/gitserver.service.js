@@ -658,6 +658,19 @@ module.exports = {
             // create bare repository
             await this.createBare(repositoryPath);
 
+            if (repository.fork) {
+                // get fork
+                const fork = repository.mirrors.find((mirror) => mirror.type === 'fork');
+
+                if (fork) {
+                    // fork repository
+                    const git = Git(repositoryPath);
+                    await git.addRemote('origin', fork.url);
+                    await git.fetch('origin');
+                }
+
+            }
+
             // return repository
             return repository;
         },

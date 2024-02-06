@@ -182,7 +182,7 @@ module.exports = {
                         },
                         type: {
                             type: "string",
-                            enum: ["push", "pull", "mirror"],
+                            enum: ["push", "pull", "mirror","fork"],
                             required: true,
                             default: "mirror",
                         },
@@ -225,6 +225,13 @@ module.exports = {
                 type: "boolean",
                 required: false,
                 default: true,
+            },
+
+            // repository is fork
+            fork: {
+                type: "boolean",
+                required: false,
+                default: false,
             },
 
 
