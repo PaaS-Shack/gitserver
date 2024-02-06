@@ -10,7 +10,7 @@ const { MoleculerClientError } = require("moleculer").Errors;
 
 const Backend = require('../lib/backend');
 const { PassThrough } = require("stream");
-const { spawn,exec } = require("child_process");
+const { spawn, exec } = require("child_process");
 const { Context } = require("moleculer");
 const auth = require('basic-auth');
 const fs = require('fs').promises;
@@ -655,18 +655,15 @@ module.exports = {
                 }
             }
 
-            // create bare repository
-            await this.createBare(repositoryPath);
+            // get fork
+            const fork = repository.mirrors.find((mirror) => mirror.type === 'fork');
 
-            if (repository.fork) {
-                // get fork
-                const fork = repository.mirrors.find((mirror) => mirror.type === 'fork');
-
-                if (fork) {
-                    // fork repository
-                    await this.forkRepository(ctx, repositoryPath, fork);
-                }
-
+            if (repository.fork && fork) {
+                // fork repository
+                await this.forkRepository(ctx, repositoryPath, fork);
+            } else {
+                // create bare repository
+                await this.createBare(repositoryPath);
             }
 
             // return repository
@@ -674,39 +671,30 @@ module.exports = {
         },
 
         /**
-         * fork repository
+         * fork bare repository
          * 
          * @param {Context} ctx - context of request
-         * @param {String} repositoryPath - repository path
+         * @param {String} repositoryPath - path to repository
          * @param {Object} fork - fork object
          * 
          * @returns {Promise}
          */
         async forkRepository(ctx, repositoryPath, fork) {
-            // fork repository
-            await new Promise((resolve, reject) => {
+
+            return new Promise((resolve, reject) => {
                 // create process
-                const ps = spawn('git', ['remote', 'add', 'origin', fork.url], {
-                    cwd: repositoryPath
+                const ps = spawn('git', ['clone', '--bare', fork.url, repositoryPath]);
+
+                // handle error
+                ps.on('error', (err) => {
+                    // reject
+                    reject(err);
                 });
 
                 // handle close
                 ps.on('close', (code) => {
                     // resolve
-                    resolve();
-                });
-            });
-
-            // fetch repository
-            await new Promise((resolve, reject) => {
-                // create process
-                const ps = spawn('git', ['fetch', 'origin'], {
-                    cwd: repositoryPath
-                });
-
-                // handle close
-                ps.on('close', (code) => {
-                    // resolve
+                    this.logger.info(`Repository forked: ${repositoryPath}`);
                     resolve();
                 });
             });
