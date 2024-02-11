@@ -438,6 +438,12 @@ module.exports = {
 
             const backend = Backend(req.url);
 
+            backend.on('error', (err) => {
+                this.logger.error(`Request: ${req.url} - ${err.message}`, err);
+                res.statusCode = 500;
+                res.end('Internal Server Error');
+            });
+
             backend.on('service', (service) => {
                 this.handleService(ctx, req, res, service, repositoryPath).then(async () => {
                     if (service.action === 'push') {
