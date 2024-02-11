@@ -701,7 +701,6 @@ module.exports = {
                 branch: {
                     type: "string",
                     optional: true,
-                    default: "main",
                 },
                 hash: {
                     type: "string",
